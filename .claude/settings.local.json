@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(true)",
+      "Bash(tree:*)",
+      "Bash(npm install:*)",
+      "Bash(cp:*)",
+      "Bash(python:*)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(pip install:*)",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:cookbook.openai.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm run build:*)",
+      "Bash(copy server.py server_backup.py)",
+      "Bash(copy server_fixed.py server.py)",
+      "Bash(npm run dev:*)",
+      "Bash(cmd /c:*)",
+      "Bash(powershell:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx playwright test:*)",
+      "Bash(npx playwright install:*)",
+      "Bash(node:*)",
+      "Bash(wc:*)",
+      "Bash(wmic:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_click",
+      "Bash(grep:*)"
+    ],
+    "deny": [],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "C:\\c\\github\\proto-build",
+      "C:\\github"
+    ]
+  }
+}

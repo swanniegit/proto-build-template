@@ -1,0 +1,116 @@
+A Product Requirements Document (PRD) has been created for an AI Liability Insuranceproduct, designed to integrate with your existing PHP Laravel stack and TIA core insurancesystem via a SOAP API.
+Product Requirements Document: AI Liability Insurance
+1. Introduction
+This document outlines the product requirements for "AI Liability Insurance," a new short-term insurance product designed for companies developing or utilizing artificial intelligence.This product will be integrated into the existing insurance management ecosystem, utilizingthe current PHP Laravel infrastructure, Oracle TIA database, and SOAP API for core policyand client management.
+2. Problem Statement
+Companies developing and deploying AI solutions face a new class of risks not adequatelycovered by traditional liability or cyber insurance policies. Potential financial loss fromalgorithmic errors, AI-induced discrimination, or unexpected model behavior creates asignificant coverage gap. Our customers require a specialized insurance product to mitigatethe unique liabilities associated with artificial intelligence.
+3. Goals and Objectives
+Objective
+Key Result
+Launch a new, competitiveAI insurance product
+Achieve first-year Gross Written Premium (GWP) of ZAR 20million.
+Integrate seamlessly withthe existing TIA system
+Configure and launch the new product with zero disruptionto existing policy administration or claims processingworkflows.
+Provide a clear andefficient user experience
+Enable brokers and internal staff to quote, bind, andmanage AI Liability policies through the existing Laravelportal.
+Ensure robust datahandling and security
+All policy and claims data for the new product must besecurely stored and managed within the Oracle TIAdatabase.
+4. User Personas
+Brenda, the Broker:
+Needs to quickly generate quotes, explain coverage details, andbind policies for her tech clients through the existing broker portal. The process shouldbe as familiar as issuing a standard professional indemnity policy.
+David, the Developer:
+A software engineer on the internal team tasked with adding thenew product. He needs clear documentation for the SOAP API endpoints and a logicalproduct structure within the TIA database to build the front-end experience.
+Thandi, the Underwriter:
+Needs to access and evaluate AI-specific risk informationsubmitted through the portal to make informed underwriting decisions and setappropriate premiums and excesses.
+5. Product Features & Requirements
+5.1. Core Insurance Product
+This product is designed as a specialized professional indemnity insurance for AI-relatedrisks.
+Coverage:
+Algorithmic Error Liability:
+Covers financial losses to a third party resulting from ademonstrable error in the insured's AI model.
+1
+Negligence & Misrepresentation:
+Covers defense costs and settlements arisingfrom claims that the AI product failed to perform as advertised, leading to financialloss.
+1
+Data Bias Liability:
+Covers legal costs associated with claims of discriminationstemming from biased AI algorithms.
+Exclusions:
+Standard cyber-attack-related breaches (covered under Cyber policies).
+Intentional malicious use of AI by the insured.
+Intellectual property infringement.
+5.2. Integration with TIA Core System
+The "AI Liability Insurance" product must be configured within the TIA system's
+ProductDefinition
+module.
+2
+This involves:
+Product Configuration:
+Creating a new product line with unique risk codes, policy wording, and tariffstructures.
+Defining the subject of insurance, specifying details of the AI model/application to becovered.
+Policy & Claims Modules:
+The existing TIA
+Core Policy
+and
+Core Claims
+modules will be used to manage theentire lifecycle.
+3
+No structural changes to the Oracle database are anticipated; this will be a newconfiguration within the existing TIA schema.
+5.3. Laravel Broker Portal Integration
+The existing PHP Laravel portal will be extended to support the new product.
+Feature
+Requirement
+Technical Implementation Detail
+Quoting
+Brokers must be able togenerate a quote by providingAI-specific risk details (e.g.,model type, training data,application).
+The Laravel application will call a
+newSOAP API endpoint
+(
+generateAIQuote
+)that passes risk data to the TIAsystem for premium calculation.
+Binding
+Allow brokers to bind policiesfrom a generated quote.
+The Laravel application will use anexisting (
+bindPolicy
+) or new(
+bindAIPolicy
+) SOAP endpoint,creating a new policy record in the TIAdatabase.
+Endorsements
+Brokers must be able toprocess endorsements (e.g.,changes to AI model usage).
+Utilize existing SOAP endpoints forpolicy adjustments, passing the newAI-specific data fields.
+First Notificationof Loss (FNOL)
+Enable brokers to submit aclaim notification for an AI-related incident.
+The Laravel application will call a
+newSOAP API endpoint
+(
+submitAIClaimFNOL
+) to create an initialclaim record in the TIA
+Core Claims
+module.
+DocumentManagement
+All policy schedules, wording,and endorsements must begenerated and stored asPDFs.
+Leverage the existing documentgeneration and storage solutionconnected to the TIA system.
+5.4. SOAP API Requirements
+The existing SOAP API service will be extended to support the new product. The followingnew endpoints (or extensions of existing ones) are required:
+generateAIQuote(risk_data)
+: Accepts structured XML data containing AI risk factors andreturns a calculated premium, excess, and terms.
+submitAIClaimFNOL(policy_id, claim_details)
+: Accepts initial claim information and creates aclaim record in the TIA system.
+The Web Services Description Language (WSDL) for the API must be updated to includethese new operations and data types.
+6. Non-Functional Requirements
+Performance:
+Quote generation via the SOAP API should not exceed the currentaverage response time for existing products.
+Security:
+All communication between the Laravel application and the SOAP API mustcontinue to use transport layer security (TLS 1.2+).
+Scalability:
+The solution must be capable of handling an initial estimate of 1,000 policiesin the first year without performance degradation.
+7. Assumptions & Dependencies
+The current TIA system has the "Product Definition" module enabled and available forconfiguration.
+2
+The team has access to TIA consultants or internal experts to configure the new productcorrectly.
+The existing SOAP API is well-documented and can be extended without majorarchitectural changes.
+Disclaimer:
+This document provides product and technical requirements based on theinformation provided. I am not a licensed financial or insurance professional. All productdetails, especially coverage, exclusions, and pricing, must be reviewed and approved byqualified underwriters, legal counsel, and regulatory experts.
+Citations
+eqtgroup.com [1]
+www.sygnity.pl [2]
+sapiens.com [3]

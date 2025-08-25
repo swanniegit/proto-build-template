@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container {
+            display: flex;
+            gap: 12px;
+            padding: 20px;
+        }
+        .card {
+            flex: 1;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            padding: 16px;
+            background: white;
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .card button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            background: #666;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <span>📋</span>
+                <div>
+                    <div>PRD</div>
+                    <small>Requirements</small>
+                </div>
+            </div>
+            <button>📋 Extract</button>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <span>🎨</span>
+                <div>
+                    <div>Design Doc</div>
+                    <small>Specification</small>
+                </div>
+            </div>
+            <button>📐 Extract</button>
+        </div>
+    </div>
+</body>
+</html>
