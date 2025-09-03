@@ -6,13 +6,17 @@ from typing import Dict, Any
 from .manager import manager
 from ..state import sessions
 from ..models.agent_models import AgentType, MultiAgentWorkflow, ConversationContext, SharedAgentMemory, AgentResponse
-from ..agents.base import DesignAgent, StoriesAndQAAgent
+from ..agents.base import DesignAgent
 from ..agents.handoff_coordinator import HandoffCoordinator
 from ..agents.memory import SessionMemory
 from ..core.config import OPENAI_API_KEY
 from ..models.api_models import DocumentResponse
-from ..prototype.generator import generate_prototype_v3
 from ..prompts.prompt_manager import prompt_manager
+from ..services.template_agent_executor import template_agent_executor
+from ..services.agent_template_service import agent_template_service
+from ..models.agent_templates import AgentExecutionRequest
+from ..llm.llm_manager import llm_manager
+from ..llm.base_provider import LLMMessage, LLMProvider
 
 async def handle_multi_agent_prototype(session_id: str, message: Dict[str, Any]):
     """Handles the main multi-agent prototyping logic."""
@@ -116,7 +120,7 @@ async def process_enhanced_multi_agent_workflow(user_input: str, session: Dict[s
         if memory_context and memory_context != "No learned preferences yet.":
             session_context_parts.append("LEARNED USER PREFERENCES:")
             session_context_parts.append(memory_context)
-            session_context_parts.append("")
+            context_parts.append("")
     
     session_context = "\n".join(session_context_parts)
     
@@ -255,10 +259,12 @@ async def handle_direct_chat(session_id: str, message: Dict[str, Any]):
             context_str_parts.append("\n")
         
         # PRIORITY 6: Add imported documents ONLY if no current context exists
-        if (sessions[session_id].get('imported_documents') and 
+        if (
+            sessions[session_id].get('imported_documents') and 
             not sessions[session_id].get("current_request") and 
             not context_data.get("current_request") and 
-            len(context_str_parts) < 2):
+            len(context_str_parts) < 2
+        ):
             context_str_parts.append("REFERENCE DOCUMENTS (BACKGROUND):\n")
             total_doc_chars = 0
             max_doc_chars = 3000  # Further reduced to prevent context pollution
@@ -286,209 +292,6 @@ async def handle_direct_chat(session_id: str, message: Dict[str, Any]):
         await manager.send_json_message({
             "type": "error",
             "message": f"Failed to process direct chat: {str(e)}"
-        }, session_id)
-
-async def generate_prd(prompt: str):
-    """Generate PRD from prompt using GPT-5 Responses API"""
-    try:
-        client = openai.OpenAI(api_key=OPENAI_API_KEY)
-        response = client.responses.create(
-            model="gpt-5",
-            instructions="You are a product manager. Generate comprehensive PRDs in markdown format.",
-            input=prompt,
-            text={"format": {"type": "json_schema", "json_schema": {"schema": DocumentResponse.model_json_schema(), "strict": True}}},)
-        result = json.loads(response.output_text)
-        return result.get("content", response.output_text)
-    except Exception as e:
-        print(f"Error generating PRD with GPT-5 Responses API: {e}")
-        # Fallback to Chat Completions
-        try:
-            client = openai.OpenAI(api_key=OPENAI_API_KEY)
-            response = client.chat.completions.create(
-                model="gpt-4o-2024-08-06",
-                messages=[
-                    {"role": "system", "content": "You are a product manager. Generate comprehensive PRDs in markdown format."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3
-            )
-            return response.choices[0].message.content
-        except Exception as fallback_e:
-            print(f"Fallback PRD generation failed: {fallback_e}")
-            return f"Error generating PRD: {str(e)}"
-
-async def handle_generate_prd(session_id: str, message: Dict[str, Any]):
-    """Handles the request to generate a PRD from agent responses."""
-    # Try to get agent_responses from the message data first
-    agent_responses = message.get("data", {}).get("agent_responses", [])
-
-    # If not provided in the message, try to retrieve from the session's workflow history
-    if not agent_responses and session_id in sessions:
-        workflow = sessions[session_id].get("multi_agent_workflow")
-        if workflow and workflow.agent_responses:
-            # Assuming workflow.agent_responses stores the latest responses
-            agent_responses = workflow.agent_responses
-
-    if agent_responses:
-        agent_text = "\n\n".join([f"Agent {resp.get('agent_type', 'Unknown')}: {resp.get('content', '')}" 
-                                 for resp in agent_responses])
-        prd_content = await generate_prd(agent_text)
-        await manager.send_json_message({
-            "type": "prd_extracted",
-            "data": {"content": prd_content}
-        }, session_id)
-    else:
-        await manager.send_json_message({
-            "type": "error",
-            "message": "No agent responses provided for PRD generation"
-        }, session_id)
-
-async def generate_design_doc(prompt: str):
-    """Generate design document from prompt using GPT-5 Responses API"""
-    try:
-        client = openai.OpenAI(api_key=OPENAI_API_KEY)
-        response = client.responses.create(
-            model="gpt-5",
-            instructions="You are a UX/UI designer. Generate comprehensive design documentation in markdown format.",
-            input=prompt,
-            text={"format": {"type": "json_schema", "json_schema": {"schema": DocumentResponse.model_json_schema(), "strict": True}}},)
-        result = json.loads(response.output_text)
-        return result.get("content", response.output_text)
-    except Exception as e:
-        print(f"Error generating design doc with GPT-5 Responses API: {e}")
-        # Fallback to Chat Completions
-        try:
-            client = openai.OpenAI(api_key=OPENAI_API_KEY)
-            response = client.chat.completions.create(
-                model="gpt-4o-2024-08-06",
-                messages=[
-                    {"role": "system", "content": "You are a UX/UI designer. Generate comprehensive design documentation in markdown format."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3
-            )
-            return response.choices[0].message.content
-        except Exception as fallback_e:
-            print(f"Fallback design doc generation failed: {fallback_e}")
-            return f"Error generating design doc: {str(e)}"
-
-async def handle_generate_design_doc(session_id: str, message: Dict[str, Any]):
-    """Handles the request to generate a design document."""
-    design_doc_content = await generate_design_doc(message["text"])
-    await manager.send_json_message({
-        "type": "design_doc",
-        "data": design_doc_content
-    }, session_id)
-
-async def handle_stories_qa_request(session_id: str, message: Dict[str, Any]):
-    """Handles Stories & QA Planning requests."""
-    try:
-        print(f"[STORIES-QA] Session {session_id} received stories_qa_request")
-        user_input = message["data"]["user_input"]
-        prd_content = message["data"].get("prd_content", "")
-        context = message["data"].get("context", {})
-        
-        # Clean input of problematic characters
-        user_input = user_input.encode('utf-8', errors='ignore').decode('utf-8')
-        prd_content = prd_content.encode('utf-8', errors='ignore').decode('utf-8')
-        
-        print(f"[STORIES-QA] User input: '{user_input}'")
-        print(f"[STORIES-QA] PRD content length: {len(prd_content)} chars")
-        print(f"[STORIES-QA] PRD content preview: {prd_content[:200] if prd_content else 'EMPTY'}")
-        
-        agent_responses = []
-        agents = sessions[session_id]["stories_qa_agents"]
-        
-        # Get focused agent from message data or default to Epic Generator
-        focused_agent_type = message["data"].get("focused_agent", "epic_generator")
-        
-        # Map string to AgentType enum
-        agent_type_map = {
-            "epic_generator": AgentType.EPIC_GENERATOR,
-            "story_generator": AgentType.STORY_GENERATOR,
-            "qa_planner": AgentType.QA_PLANNER,
-            "review_agent": AgentType.REVIEW_AGENT
-        }
-        
-        agent_type = agent_type_map.get(focused_agent_type, AgentType.EPIC_GENERATOR)
-        selected_agent = agents[agent_type]
-        
-        try:
-            print(f"[STORIES-QA] Processing with {agent_type.value}")
-            response_content = await selected_agent.process_request(
-                user_input, 
-                str(context), 
-                prd_content
-            )
-            agent_responses.append(response_content)
-            print(f"[STORIES-QA] {agent_type.value} completed successfully")
-        except Exception as e:
-            print(f"[STORIES-QA] Error processing {agent_type.value} request: {e}")
-            agent_responses.append({
-                "agent_type": agent_type.value,
-                "response": f"Error: {str(e)}"
-            })
-        
-        await manager.send_json_message({
-            "type": "stories_qa_response",
-            "data": {"agent_responses": agent_responses}
-        }, session_id)
-
-    except Exception as e:
-        await manager.send_json_message({
-            "type": "error",
-            "message": f"Failed to process stories_qa_request: {str(e)}"
-        }, session_id)
-
-async def handle_single_agent_prototype(session_id: str, message: Dict[str, Any]):
-    """Handles single-agent prototype generation (for Single Agent Prototyper UI)."""
-    try:
-        user_input = message["text"]
-        session = sessions[session_id]
-        
-        # Add to history
-        session["history"].append(user_input)
-        
-        # Store previous prototype for learning
-        previous_prototype = session.get("current_prototype", {}).copy() if session.get("current_prototype") else {}
-        
-        print(f"Generating single-agent prototype for: {user_input}")
-        
-        # Generate prototype using GPT-5 Responses API
-        prototype, response_id = await generate_prototype_v3(
-            user_input,
-            session["history"],
-            session.get("current_prototype", {}),
-            session.get("previous_response_id")
-        )
-        
-        # Update session with new response ID
-        session["previous_response_id"] = response_id
-        print(f"Generated prototype: {type(prototype)}")
-        
-        # Learn from changes
-        if "memory" in session:
-            session["memory"].learn_from_change(
-                previous_prototype, 
-                prototype, 
-                user_input
-            )
-            
-            # Apply learned preferences
-            prototype = session["memory"].apply_learned_preferences(prototype)
-        
-        # Store and send back
-        session["current_prototype"] = prototype
-        await manager.send_json_message({
-            "type": "prototype",
-            "data": prototype
-        }, session_id)
-        
-    except Exception as e:
-        print(f"Error in single-agent prototype generation: {e}")
-        await manager.send_json_message({
-            "type": "error",
-            "message": f"Failed to generate prototype: {str(e)}"
         }, session_id)
 
 async def handle_get_prompts(session_id: str, message: Dict[str, Any]):
@@ -532,17 +335,456 @@ async def handle_save_prompt(session_id: str, message: Dict[str, Any]):
             "message": f"Failed to save prompt: {str(e)}"
         }, session_id)
 
+async def handle_execute_template_agent(session_id: str, message: Dict[str, Any]):
+    """Handles execution of a single template-based agent."""
+    try:
+        template_id = message["data"]["template_id"]
+        user_input = message["data"]["user_input"]
+        context = message["data"].get("context", {})
+        
+        # Add session context
+        session_context = {
+            "conversation_history": sessions[session_id].get("history", []),
+            "current_prototype": sessions[session_id].get("current_prototype"),
+            "session_preferences": sessions[session_id].get("memory", {}).get("preferences", {}) if sessions[session_id].get("memory") else {}
+        }
+        context.update(session_context)
+        
+        # Store the current request
+        sessions[session_id]["current_request"] = user_input
+        sessions[session_id]["history"].append(user_input)
+        
+        result = await template_agent_executor.execute_agent_template(
+            template_id, user_input, context
+        )
+        
+        await manager.send_json_message({
+            "type": "template_agent_result",
+            "data": {
+                "result": result.dict(),
+                "template_id": template_id
+            }
+        }, session_id)
+        
+    except Exception as e:
+        await manager.send_json_message({
+            "type": "error",
+            "message": f"Failed to execute template agent: {str(e)}"
+        }, session_id)
+
+async def handle_execute_multiple_template_agents(session_id: str, message: Dict[str, Any]):
+    """Handles execution of multiple template-based agents."""
+    try:
+        print(f"[DEBUG] Raw message received: {message}")
+        template_ids = message["data"]["template_ids"]
+        user_input = message["data"]["user_input"]
+        context = message["data"].get("context", {})
+        llm_settings = message["data"].get("llm_settings", {})
+        
+        print(f"[DEBUG] Template IDs: {template_ids}")
+        print(f"[DEBUG] User input: '{user_input}' (length: {len(user_input) if user_input else 0})")
+        print(f"[DEBUG] Context: {context}")
+        print(f"[DEBUG] LLM Settings: {llm_settings}")
+        
+        # Add session context
+        session_data = sessions[session_id]
+        memory = session_data.get("memory")
+        session_context = {
+            "conversation_history": session_data.get("history", []),
+            "current_prototype": session_data.get("current_prototype"),
+            "session_preferences": memory.preferences if memory else {}
+        }
+        context.update(session_context)
+        
+        # Store the current request
+        sessions[session_id]["current_request"] = user_input
+        sessions[session_id]["history"].append(user_input)
+        
+        results = await template_agent_executor.execute_multiple_templates(
+            template_ids, user_input, context, llm_settings=llm_settings
+        )
+        
+        await manager.send_json_message({
+            "type": "multiple_template_agents_result",
+            "data": {
+                "results": [result.dict() for result in results],
+                "user_input": user_input,
+                "execution_count": len(results)
+            }
+        }, session_id)
+        
+    except Exception as e:
+        await manager.send_json_message({
+            "type": "error",
+            "message": f"Failed to execute multiple template agents: {str(e)}"
+        }, session_id)
+
+async def handle_get_agent_templates(session_id: str, message: Dict[str, Any]):
+    """Handles getting all available agent templates."""
+    try:
+        collection = agent_template_service.get_all_templates()
+        
+        await manager.send_json_message({
+            "type": "agent_templates",
+            "data": {
+                "templates": [template.dict() for template in collection.templates],
+                "active_templates": collection.active_templates
+            }
+        }, session_id)
+        
+    except Exception as e:
+        await manager.send_json_message({
+            "type": "error", 
+            "message": f"Failed to get agent templates: {str(e)}"
+        }, session_id)
+
+async def handle_execute_llm_agents(session_id: str, message: Dict[str, Any]):
+    """Handles execution of multiple LLM-based agents for workspace analysis."""
+    try:
+        print(f"[LLM-AGENTS] Session {session_id}: Executing LLM-based agents")
+        
+        user_input = message["data"]["user_input"]
+        template_ids = message["data"]["template_ids"]
+        llm_settings = message["data"].get("llm_settings", {})
+        
+        # Extract LLM settings
+        provider_str = llm_settings.get("provider", "openai")
+        model = llm_settings.get("model", "gpt-4o-mini")
+        temperature = llm_settings.get("temperature", 0.7)
+        
+        # Convert provider string to enum
+        try:
+            provider = LLMProvider(provider_str)
+        except ValueError:
+            provider = LLMProvider.OPENAI
+            print(f"[WARNING] Invalid provider '{provider_str}', using OpenAI")
+        
+        # Store request in session
+        sessions[session_id]["current_request"] = user_input
+        sessions[session_id]["history"].append(user_input)
+        
+        # Load actual agent templates from the database
+        try:
+            from ..services.agent_template_service import agent_template_service
+            template_collection = agent_template_service.get_all_templates()
+            agent_templates = {t.id: t for t in template_collection.templates if t.is_active}
+            print(f"[DEBUG] Loaded {len(agent_templates)} active agent templates")
+            print(f"[DEBUG] Template IDs: {list(agent_templates.keys())}")
+            print(f"[DEBUG] Requested template IDs: {template_ids}")
+        except Exception as e:
+            print(f"[ERROR] Failed to load agent templates: {e}")
+            agent_templates = {}
+        
+        # Create async tasks for parallel execution
+        async def execute_agent(template_id: str):
+            if template_id not in agent_templates:
+                print(f"[ERROR] Template {template_id} not found in agent_templates")
+                return None
+                
+            try:
+                print(f"[DEBUG] Starting execution of agent: {template_id}")
+                template = agent_templates[template_id]
+                agent_name = template.name
+                agent_prompt = template.prompt
+                print(f"[DEBUG] Agent {agent_name} loaded, prompt length: {len(agent_prompt)}")
+                
+                # Create messages for this agent
+                messages = [
+                    LLMMessage(role="system", content=f"{agent_prompt}\n\nProvide your analysis in the following format:\n1. Main Analysis (2-3 paragraphs)\n2. Specific Suggestions (bullet points)\n3. Questions to Consider (bullet points)\n4. Confidence Level (0-100%)"),
+                    LLMMessage(role="user", content=f"Analyze this request from your expertise perspective: {user_input}")
+                ]
+                
+                # Generate response using selected LLM
+                print(f"[DEBUG] Calling LLM for {agent_name}: {provider} {model}")
+                
+                try:
+                    response = await llm_manager.generate(
+                        messages=messages,
+                        model=model,
+                        provider=provider,
+                        temperature=temperature,
+                        max_tokens=1500
+                    )
+                    print(f"[DEBUG] LLM response received for {agent_name}: {len(response.content)} chars")
+                except Exception as llm_error:
+                    print(f"[DEBUG] Primary LLM failed for {agent_name}: {llm_error}")
+                    # Fallback to OpenAI if selected provider fails
+                    if provider != LLMProvider.OPENAI:
+                        print(f"[DEBUG] Falling back to OpenAI for {agent_name}")
+                        response = await llm_manager.generate(
+                            messages=messages,
+                            model="gpt-4o-mini",
+                            provider=LLMProvider.OPENAI,
+                            temperature=temperature,
+                            max_tokens=1500
+                        )
+                        print(f"[DEBUG] Fallback LLM response received for {agent_name}: {len(response.content)} chars")
+                    else:
+                        raise llm_error
+                
+                # Parse the response into structured format
+                content = response.content
+                
+                # Extract suggestions and questions (basic parsing)
+                suggestions = []
+                questions = []
+                alternative_ideas = []
+                rerun_results = []
+                
+                if "Suggestions:" in content or "suggestions:" in content:
+                    suggestion_section = content.split("uggestions:")[-1].split("Questions:")[0] if "Questions:" in content else content.split("uggestions:")[-1]
+                    suggestions = [line.strip().lstrip("•-* ") for line in suggestion_section.split("\n") if line.strip() and line.strip().startswith(("•", "-", "*", "1.", "2.", "3."))]
+                
+                if "Questions:" in content or "questions:" in content:
+                    question_section = content.split("uestions:")[-1]
+                    questions = [line.strip().lstrip("•-* ") for line in question_section.split("\n") if line.strip() and line.strip().startswith(("•", "-", "*", "1.", "2.", "3."))]
+                
+                # Special parsing for Multi-Perspective Analyst
+                if template_id == "rerun_default":
+                    # Extract the 5 perspectives from the content
+                    perspectives = []
+                    perspective_markers = ["STRATEGIC PERSPECTIVE", "USER-CENTRIC PERSPECTIVE", "INNOVATION PERSPECTIVE", "RISK & COMPLIANCE PERSPECTIVE", "IMPLEMENTATION PERSPECTIVE"]
+                    
+                    for i, marker in enumerate(perspective_markers):
+                        if marker in content:
+                            start_pos = content.find(marker)
+                            if i < len(perspective_markers) - 1:
+                                next_marker = perspective_markers[i + 1]
+                                end_pos = content.find(next_marker)
+                                if end_pos == -1:
+                                    end_pos = len(content)
+                            else:
+                                end_pos = len(content)
+                            
+                            perspective_content = content[start_pos:end_pos].strip()
+                            if perspective_content:
+                                perspectives.append(f"{marker}:\n{perspective_content}")
+                    
+                    rerun_results = perspectives[:5]  # Ensure max 5 perspectives
+                
+                # Extract confidence level
+                confidence_level = 0.8  # Default
+                if "confidence" in content.lower():
+                    import re
+                    conf_match = re.search(r'(\d+)%', content)
+                    if conf_match:
+                        confidence_level = int(conf_match.group(1)) / 100.0
+                
+                # Create result object
+                result = {
+                    "template_id": template_id,
+                    "agent_name": agent_name,
+                    "content": content,
+                    "suggestions": suggestions[:5],  # Limit to 5 suggestions
+                    "questions": questions[:5],      # Limit to 5 questions
+                    "confidence_level": confidence_level,
+                    "execution_time": response.response_time or 1.0,
+                    "alternative_ideas": alternative_ideas[:5],
+                    "rerun_results": rerun_results[:5]
+                }
+                
+                # Send individual result as it completes
+                await manager.send_json_message({
+                    "type": "template_agent_result",
+                    "data": {
+                        "result": result,
+                        "template_id": template_id
+                    }
+                }, session_id)
+                
+                return result
+                
+            except Exception as e:
+                print(f"[ERROR] Failed to execute agent {template_id}: {e}")
+                print(f"[ERROR] Error type: {type(e).__name__}")
+                print(f"[ERROR] LLM settings: provider={provider}, model={model}")
+                import traceback
+                traceback.print_exc()
+                
+                # Send error result
+                template = agent_templates.get(template_id)
+                agent_name = template.name if template else template_id.replace("_", " ").title()
+                
+                error_result = {
+                    "template_id": template_id,
+                    "agent_name": agent_name,
+                    "content": f"Error executing agent: {str(e)}",
+                    "suggestions": [],
+                    "questions": [],
+                    "confidence_level": 0.0,
+                    "execution_time": response_time,
+                    "alternative_ideas": [],
+                    "rerun_results": []
+                }
+                
+                await manager.send_json_message({
+                    "type": "template_agent_result",
+                    "data": {
+                        "result": error_result,
+                        "template_id": template_id
+                    }
+                }, session_id)
+                
+                return error_result
+        
+        # Execute all agents in parallel
+        print(f"[LLM-AGENTS] Starting parallel execution of {len(template_ids)} agents")
+        tasks = [execute_agent(template_id) for template_id in template_ids]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Filter out None results and exceptions
+        valid_results = [r for r in results if r is not None and not isinstance(r, Exception)]
+        
+        # Send final completion message
+        await manager.send_json_message({
+            "type": "multiple_template_agents_result",
+            "data": {
+                "results": valid_results,
+                "user_input": user_input,
+                "execution_count": len(valid_results)
+            }
+        }, session_id)
+        
+        print(f"[LLM-AGENTS] Successfully executed {len(valid_results)} agents in parallel for session {session_id}")
+        
+    except Exception as e:
+        print(f"[ERROR] LLM agents execution failed: {str(e)}")
+        await manager.send_json_message({
+            "type": "error",
+            "message": f"LLM agents execution failed: {str(e)}"
+        }, session_id)
+
+async def handle_generate_prototype(session_id: str, message: Dict[str, Any]):
+    """Handles prototype generation using the selected LLM."""
+    try:
+        print(f"[PROTOTYPE] Session {session_id}: Generating prototype")
+        
+        user_input = message["data"]["text"]
+        llm_settings = message["data"].get("llm_settings", {})
+        context = message["data"].get("context", {})
+        
+        # Extract LLM settings
+        provider_str = llm_settings.get("provider", "openai")
+        model = llm_settings.get("model", "gpt-4o-mini")
+        temperature = llm_settings.get("temperature", 0.7)
+        
+        # Convert provider string to enum
+        try:
+            provider = LLMProvider(provider_str)
+        except ValueError:
+            provider = LLMProvider.OPENAI
+            print(f"[WARNING] Invalid provider '{provider_str}', using OpenAI")
+        
+        # Store request in session
+        sessions[session_id]["current_request"] = user_input
+        sessions[session_id]["history"].append(user_input)
+        
+        # Build prompt for UI generation
+        system_prompt = """You are an expert UI/UX designer that converts natural language descriptions into interactive React component JSON structures.
+
+Generate a JSON object that represents a React component structure with the following format:
+{
+  "component": "div",
+  "props": {
+    "className": "p-6 max-w-4xl mx-auto bg-white rounded-xl shadow-lg"
+  },
+  "children": [
+    {
+      "component": "h1",
+      "props": {"className": "text-3xl font-bold text-gray-800 mb-4"},
+      "text": "Title Here"
+    }
+  ]
+}
+
+Rules:
+1. Use semantic HTML components (div, h1-h6, p, button, input, form, img, span, label)
+2. Apply modern Tailwind CSS classes for styling
+3. Make interactive elements functional (buttons, forms, inputs)
+4. Create responsive, modern designs
+5. Only return the JSON object, no markdown or additional text
+6. Ensure proper nesting and structure
+
+Available components: div, button, input, form, h1, h2, h3, h4, h5, h6, p, span, label, img"""
+
+        messages = [
+            LLMMessage(role="system", content=system_prompt),
+            LLMMessage(role="user", content=f"Create a UI component for: {user_input}")
+        ]
+        
+        # Generate prototype using selected LLM
+        response = await llm_manager.generate(
+            messages=messages,
+            model=model,
+            provider=provider,
+            temperature=temperature,
+            max_tokens=2000
+        )
+        
+        # Parse the JSON response
+        prototype_json = None
+        try:
+            # Try to extract JSON from response
+            content = response.content.strip()
+            
+            # Handle markdown wrapped JSON
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            
+            prototype_json = json.loads(content.strip())
+            
+        except json.JSONDecodeError as e:
+            print(f"[ERROR] Failed to parse JSON: {e}")
+            # Fallback to simple structure
+            prototype_json = {
+                "component": "div",
+                "props": {"className": "p-8 text-center bg-gray-100 rounded-lg"},
+                "children": [
+                    {
+                        "component": "h2",
+                        "props": {"className": "text-2xl font-bold text-red-600 mb-4"},
+                        "text": "Generation Error"
+                    },
+                    {
+                        "component": "p",
+                        "props": {"className": "text-gray-700"},
+                        "text": "Failed to parse AI response. Please try again with a simpler description."
+                    }
+                ]
+            }
+        
+        # Store prototype in session
+        sessions[session_id]["current_prototype"] = prototype_json
+        
+        await manager.send_json_message({
+            "type": "prototype",
+            "data": prototype_json
+        }, session_id)
+        
+        print(f"[PROTOTYPE] Successfully generated prototype for session {session_id}")
+        
+    except Exception as e:
+        print(f"[ERROR] Prototype generation failed: {str(e)}")
+        await manager.send_json_message({
+            "type": "error",
+            "message": f"Prototype generation failed: {str(e)}"
+        }, session_id)
+
 
 message_handlers = {
     "multi_agent_prototype": handle_multi_agent_prototype,
     "switch_agent": handle_switch_agent,
     "import_documents": handle_import_documents,
     "direct_chat": handle_direct_chat,
-    "generate_prd": handle_generate_prd,
-    "generate_design_doc": handle_generate_design_doc,
-    "stories_qa_request": handle_stories_qa_request,
     "get_prompts": handle_get_prompts,
     "save_prompt": handle_save_prompt,
-    # Default handler for standard prototype generation (single-agent mode)
-    "generate_prototype": handle_single_agent_prototype,
+    "execute_template_agent": handle_execute_template_agent,
+    "execute_multiple_template_agents": handle_execute_multiple_template_agents,
+    "execute_llm_agents": handle_execute_llm_agents,
+    "get_agent_templates": handle_get_agent_templates,
+    "generate_prototype": handle_generate_prototype,
 }

@@ -1,0 +1,469 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.6;
+  font-weight: 400;
+  color-scheme: dark;
+  color: #ffffff;
+  background-color: #000000;
+
+  /* Neural Color Palette */
+  --neural-blue: #3B82F6;
+  --neural-purple: #8B5CF6;
+  --neural-cyan: #06B6D4;
+  --neural-gray-900: #111827;
+  --neural-gray-800: #1F2937;
+  --neural-gray-700: #374151;
+  
+  /* Neural Gradients */
+  --neural-gradient: linear-gradient(135deg, #3B82F6, #8B5CF6, #06B6D4);
+  --neural-gradient-dark: linear-gradient(135deg, #1E40AF, #6D28D9, #0369A1);
+  --neural-glow: 0 0 20px rgba(59, 130, 246, 0.3);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Custom button styles */
+button {
+  border-radius: 6px;
+  border: none;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+button:focus,
+button:focus-visible {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* Loading states */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Offline indicator */
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #f59e0b;
+  color: white;
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  z-index: 1000;
+}
+
+/* Standard scrollbars for all scroll containers */
+.overflow-y-auto,
+*[style*="overflow-y: auto"],
+*[style*="overflowY: auto"],
+*[style*="overflow-y:auto"],
+*[style*="overflowY:auto"],
+*[style*="overflow: auto"] {
+  scrollbar-width: auto !important; /* Firefox */
+  scrollbar-color: #9ca3af #e5e7eb !important; /* Firefox: thumb track */
+}
+
+.overflow-y-auto::-webkit-scrollbar,
+*[style*="overflow-y: auto"]::-webkit-scrollbar,
+*[style*="overflowY: auto"]::-webkit-scrollbar,
+*[style*="overflow-y:auto"]::-webkit-scrollbar,
+*[style*="overflowY:auto"]::-webkit-scrollbar,
+*[style*="overflow: auto"]::-webkit-scrollbar {
+  width: 12px !important; /* Width of scrollbar */
+}
+
+.overflow-y-auto::-webkit-scrollbar-track,
+*[style*="overflow-y: auto"]::-webkit-scrollbar-track,
+*[style*="overflowY: auto"]::-webkit-scrollbar-track,
+*[style*="overflow-y:auto"]::-webkit-scrollbar-track,
+*[style*="overflowY:auto"]::-webkit-scrollbar-track,
+*[style*="overflow: auto"]::-webkit-scrollbar-track {
+  background: #e5e7eb !important; /* Light gray track */
+  border-radius: 6px !important;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb,
+*[style*="overflow-y: auto"]::-webkit-scrollbar-thumb,
+*[style*="overflowY: auto"]::-webkit-scrollbar-thumb,
+*[style*="overflow-y:auto"]::-webkit-scrollbar-thumb,
+*[style*="overflowY:auto"]::-webkit-scrollbar-thumb,
+*[style*="overflow: auto"]::-webkit-scrollbar-thumb {
+  background: #9ca3af !important; /* Gray thumb */
+  border-radius: 6px !important;
+  border: 2px solid #e5e7eb !important; /* Border around thumb */
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover,
+*[style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover,
+*[style*="overflowY: auto"]::-webkit-scrollbar-thumb:hover,
+*[style*="overflow-y:auto"]::-webkit-scrollbar-thumb:hover,
+*[style*="overflowY:auto"]::-webkit-scrollbar-thumb:hover,
+*[style*="overflow: auto"]::-webkit-scrollbar-thumb:hover {
+  background: #6b7280 !important; /* Darker gray on hover */
+}
+
+
+
+/* Ensure flex containers have proper height */
+.flex-1 {
+  min-height: 0 !important; /* Allow flex items to shrink below content size */
+}
+
+/* PWA Install prompt */
+.install-prompt {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  right: 1rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+@media (min-width: 768px) {
+  .install-prompt {
+    left: auto;
+    right: 1rem;
+    max-width: 320px;
+  }
+}
+
+/* Neural Theme Custom Styles */
+.neural-glow {
+  box-shadow: var(--neural-glow);
+}
+
+.neural-gradient {
+  background: var(--neural-gradient);
+}
+
+.neural-gradient-dark {
+  background: var(--neural-gradient-dark);
+}
+
+/* Custom scrollbars for dark theme */
+.overflow-y-auto,
+*[style*="overflow-y: auto"]::-webkit-scrollbar-track {
+  background: #1f2937 !important;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb,
+*[style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
+  background: #4b5563 !important;
+  border: 2px solid #1f2937 !important;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover,
+*[style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover {
+  background: #6b7280 !important;
+}
+
+/* Animation utilities */
+@keyframes neural-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+.neural-pulse {
+  animation: neural-pulse 3s ease-in-out infinite;
+}
+
+/* Glassmorphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Grid background pattern */
+.neural-grid {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* Typing effect */
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  from, to {
+    border-color: transparent;
+  }
+  50% {
+    border-color: #06b6d4;
+  }
+}
+
+.typewriter {
+  overflow: hidden;
+  border-right: 0.15em solid #06b6d4;
+  white-space: nowrap;
+  margin: 0 auto;
+  animation: typing 3.5s steps(40, end), blink 0.75s step-end infinite;
+}
+
+/* Neural slider styles */
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #06b6d4, #8b5cf6);
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+  transition: all 0.2s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.8);
+}
+
+.slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #06b6d4, #8b5cf6);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+}
+
+/* Advanced Neural Loading Animations */
+@keyframes neural-scan {
+  0%, 100% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes neural-breathing {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes neural-wave {
+  0% {
+    transform: translateX(-100%) scaleX(1);
+  }
+  50% {
+    transform: translateX(0%) scaleX(1.5);
+  }
+  100% {
+    transform: translateX(100%) scaleX(1);
+  }
+}
+
+@keyframes neural-matrix {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes neural-orbit {
+  from {
+    transform: rotate(0deg) translateX(30px) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(30px) rotate(-360deg);
+  }
+}
+
+/* Neural Loading Spinner */
+.neural-spinner {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+.neural-spinner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 3px solid transparent;
+  border-top: 3px solid #06b6d4;
+  border-right: 3px solid #8b5cf6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.neural-spinner::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
+  border: 3px solid transparent;
+  border-bottom: 3px solid #06b6d4;
+  border-left: 3px solid #8b5cf6;
+  border-radius: 50%;
+  animation: spin 1.5s linear infinite reverse;
+}
+
+/* Neural Scan Effect */
+.neural-scan-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.neural-scan-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #06b6d4, transparent);
+  animation: neural-scan 3s ease-in-out infinite;
+  z-index: 10;
+}
+
+/* Neural Data Stream */
+.neural-stream {
+  position: relative;
+  overflow: hidden;
+}
+
+.neural-stream::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.1), transparent);
+  animation: neural-wave 2s ease-in-out infinite;
+}
+
+/* Hover Effects */
+.neural-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 10px 25px rgba(6, 182, 212, 0.15),
+    0 0 20px rgba(139, 92, 246, 0.1);
+  transition: all 0.3s ease;
+}
+
+/* Button Loading States */
+.btn-neural-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-neural-loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: neural-wave 1.5s ease-in-out infinite;
+}
+
+/* Typing Effect for Text */
+.neural-typing {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typing 2s steps(20, end), blink 0.75s step-end infinite alternate;
+}
+
+/* Matrix Rain Effect */
+.neural-matrix-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.matrix-char {
+  position: absolute;
+  color: #06b6d4;
+  font-family: monospace;
+  font-size: 14px;
+  opacity: 0;
+  animation: neural-matrix 4s linear infinite;
+}

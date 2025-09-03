@@ -1,0 +1,16 @@
+{
+  "users_by_email": {
+    "test@example.com": "5951df69240ee33f",
+    "testuser@example.com": "e6e6f7f215231959",
+    "christo.mailme@gmail.com": "0d719117bc89f9b6",
+    "photosharer818@gmail.com": "0133a114e0be26a5"
+  },
+  "users_by_username": {
+    "testuser": "e6e6f7f215231959",
+    "swannie": "0d719117bc89f9b6"
+  },
+  "user_sessions": {},
+  "user_agents": {},
+  "session_messages": {},
+  "public_agents": []
+}

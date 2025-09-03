@@ -30,7 +30,16 @@
       "mcp__playwright__browser_snapshot",
       "mcp__playwright__browser_type",
       "mcp__playwright__browser_click",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(redis-server:*)",
+      "Bash(choco:*)",
+      "Bash(docker:*)",
+      "Bash(npx vite build:*)",
+      "WebSearch",
+      "Bash(tasklist:*)",
+      "Bash(dir)",
+      "Bash(head:*)",
+      "Bash(move:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

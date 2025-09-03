@@ -13,6 +13,10 @@ class AgentType(str, Enum):
     STORY_GENERATOR = "story_generator"
     QA_PLANNER = "qa_planner"
     REVIEW_AGENT = "review_agent"
+    # Development Planning Agent
+    DEVELOPMENT_PLANNER = "development_planner"
+    # Micro-Architecture Agent
+    LEGO_BUILDER = "lego_builder"
 
 class AgentResponse(BaseModel):
     agent_type: AgentType
